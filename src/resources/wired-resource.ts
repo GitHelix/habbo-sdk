@@ -11,6 +11,10 @@ import type { HttpClient, HttpMethod } from "../http.js";
 import type { ResolvedConfig } from "../config.js";
 import { HabboAuthError } from "../errors.js";
 import { sanitizeFurniId, type VariableScope } from "../types/variables.js";
+import {
+  decodeVariableValues,
+  encodeVariableValues,
+} from "../utils/variables/wire-format.js";
 
 const READ_KEY_HEADER = "X-Wired-Read-Key";
 const WRITE_KEY_HEADER = "X-Wired-Write-Key";
@@ -111,12 +115,13 @@ export abstract class WiredResource {
       query?: Record<string, string | number | boolean | undefined>;
     } = {},
   ): Promise<T> {
-    return this.http.request<T>({
+    const response = await this.http.request<T>({
       method,
       url: this.url(roomId, path),
       headers: this.authHeaders(need),
-      ...(options.body !== undefined ? { body: options.body } : {}),
+      ...(options.body !== undefined ? { body: encodeVariableValues(options.body) } : {}),
       ...(options.query !== undefined ? { query: options.query } : {}),
     });
+    return decodeVariableValues(response);
   }
 }

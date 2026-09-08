@@ -175,7 +175,28 @@ Room-wide globals have their own pair of methods:
 
 ```ts
 const jackpot = await room.variables.getGlobal("jackpot");
-await room.variables.updateGlobal("jackpot", jackpot.value + 100);
+await room.variables.updateGlobal("jackpot", jackpot.value + 100n);
+```
+
+### Variable values are `bigint`
+
+Wired variables are signed 64-bit integers, which a JSON number cannot carry:
+anything past 2^53 comes back rounded. The API transports them as text, and the
+SDK parses every value it reads into a `bigint`, so `value` is always a `bigint`
+regardless of how small the number is.
+
+```ts
+const jackpot = await room.variables.getGlobal("jackpot");
+jackpot.value === 100n;          // compare against a bigint
+Number(jackpot.value);           // or narrow it, when the range allows
+```
+
+Writes accept `number` or `bigint` — the SDK renders either as the text the API
+expects:
+
+```ts
+await room.variables.updateGlobal("jackpot", 100);
+await room.variables.updateGlobal("jackpot", 2n ** 62n);
 ```
 
 ### Leaderboards

@@ -36,13 +36,13 @@ export type TargetKindFor<S extends VariableScope> = S extends "user"
   : FurniTargetKind;
 
 /**
- * The value type a wired variable can hold.
+ * The value type accepted when writing a wired variable.
  *
  * The API stores wired variables as signed 64-bit whole numbers only; strings
- * and booleans are rejected. Within the safe integer range the value is a
- * plain `number`; beyond it the SDK uses `bigint`, which carries every
- * value the API accepts. Values are validated by {@link assertVariableValue}
- * before any write leaves the SDK.
+ * and booleans are rejected. Within the safe integer range the value may be a
+ * plain `number`; beyond it use `bigint`, which carries every value the API
+ * accepts. Values are validated by {@link assertVariableValue} before any
+ * write leaves the SDK. Reads always come back as `bigint`.
  */
 export type VariableValue = number | bigint;
 
@@ -50,8 +50,8 @@ export type VariableValue = number | bigint;
  * A stored wired variable value together with its timestamps.
  */
 export interface WiredVariable {
-  /** The current value: a `number` up to 2^53, a `bigint` beyond it. */
-  value: VariableValue;
+  /** The current value. The API transports it as text; the SDK parses it to `bigint`. */
+  value: bigint;
   /** ISO 8601 timestamp of when the value was first stored. */
   creation_time: string;
   /** ISO 8601 timestamp of the most recent update. */

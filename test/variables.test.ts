@@ -105,7 +105,7 @@ async function testWriteUsesWriteKey() {
   assert.equal(call.method, "PUT");
   assert.equal(call.headers["X-Wired-Write-Key"], "w");
   assert.equal(call.headers["X-Wired-Read-Key"], undefined);
-  assert.deepEqual(call.body, { value: 7 });
+  assert.deepEqual(call.body, { value: "7" });
 }
 
 async function testSanitizeFurniId() {
@@ -153,7 +153,7 @@ async function testBatchSendsBothKeysAndSpecShape() {
   const habbo = room({ readKey: "r", writeKey: "w" });
   nextBody = JSON.stringify({
     results: [
-      { op_id: "a", status: 200, body: { value: 7, creation_time: "t", update_time: "t" } },
+      { op_id: "a", status: 200, body: { value: "7", creation_time: "t", update_time: "t" } },
       { op_id: "b", status: 400, error: { code: "wired.variables.invalid_target", message: "x" } },
     ],
   });
@@ -170,7 +170,7 @@ async function testBatchSendsBothKeysAndSpecShape() {
   assert.equal(call.headers["X-Wired-Write-Key"], "w");
   assert.deepEqual(call.body, {
     requests: [
-      { method: "PATCH", path: "users/44", body: { value: 10 }, op_id: "a" },
+      { method: "PATCH", path: "users/44", body: { value: "10" }, op_id: "a" },
       { method: "DELETE", path: "pets/12" },
     ],
   });
@@ -198,7 +198,7 @@ async function testIterateByKindStopsOnShortPage() {
   const habbo = room({ readKey: "r" });
   let page = 0;
   const paged: FetchLike = (url, init) => {
-    const items = page === 0 ? [{ value: 1 }, { value: 2 }] : [{ value: 3 }];
+    const items = page === 0 ? [{ value: "1" }, { value: "2" }] : [{ value: "3" }];
     page += 1;
     nextBody = JSON.stringify({ items, page, size: 2 });
     return stubFetch(url, init);
@@ -228,7 +228,7 @@ async function testProfilePatchAllowsNullToDelete() {
     "https://sandbox.habbo.com/api/public/rooms/796/variables_profile/user/users/44",
   );
   assert.equal(call.method, "PATCH");
-  assert.deepEqual(call.body, { variables: { coins: 50, tmp: null } });
+  assert.deepEqual(call.body, { variables: { coins: "50", tmp: null } });
 }
 
 async function testMissingKeyFailsBeforeRequest() {
@@ -269,37 +269,37 @@ async function testBigintValuesSerializeExactly() {
   await habbo.variables.set("user", "balance", "users", 44, -(2n ** 63n));
 
   const call = lastCall();
-  assert.ok(call.rawBody.includes('"value":-9223372036854775808'), call.rawBody);
+  assert.ok(call.rawBody.includes('"value":"-9223372036854775808"'), call.rawBody);
   assert.ok(!call.rawBody.includes("__HABBO"), "no placeholder may leak onto the wire");
 }
 
 async function testSmallValuesSerializeAsPlainNumbers() {
   const habbo = room({ writeKey: "w" });
   await habbo.variables.updateGlobal("jackpot", 1500);
-  assert.equal(lastCall().rawBody, '{"value":1500}');
+  assert.equal(lastCall().rawBody, '{"value":"1500"}');
 }
 
 async function testLargeResponseValuesParseAsBigint() {
   const habbo = room({ readKey: "r" });
   nextBody =
-    '{"value":9007199254740993,"creation_time":"2026-09-01T19:26:09.664Z","update_time":"2026-09-01T19:26:09.664Z"}';
+    '{"value":"9007199254740993","creation_time":"2026-09-01T19:26:09.664Z","update_time":"2026-09-01T19:26:09.664Z"}';
   const variable = await habbo.variables.getGlobal("big");
   assert.equal(variable.value, 9007199254740993n);
   assert.equal(typeof variable.value, "bigint");
 
-  nextBody = '{"value":123,"creation_time":"t","update_time":"t"}';
+  nextBody = '{"value":"123","creation_time":"t","update_time":"t"}';
   const small = await habbo.variables.getGlobal("small");
-  assert.equal(small.value, 123);
-  assert.equal(typeof small.value, "number");
+  assert.equal(small.value, 123n);
+  assert.equal(typeof small.value, "bigint");
 }
 
 async function testNestedBigintsAndDigitStringsSurviveParsing() {
   const habbo = room({ readKey: "r" });
   nextBody =
-    '{"user":{"id":44,"name":"Cebolla1"},"variables":{"coins":{"value":9223372036854775807,"creation_time":"t","update_time":"t"},"note":{"value":1,"creation_time":"t","update_time":"t"}}}';
+    '{"user":{"id":44,"name":"Cebolla1"},"variables":{"coins":{"value":"9223372036854775807","creation_time":"t","update_time":"t"},"note":{"value":"1","creation_time":"t","update_time":"t"}}}';
   const profile = await habbo.variables.profiles.getUser("users", 44);
   assert.equal(profile.variables["coins"]!.value, 9223372036854775807n);
-  assert.equal(profile.variables["note"]!.value, 1);
+  assert.equal(profile.variables["note"]!.value, 1n);
 
   nextBody = '{"users":["9223372036854775807","ok"],"furni":[],"global":[]}';
   const names = await habbo.variables.list();
@@ -350,7 +350,7 @@ async function testBatchAllowsBigintValues() {
     .patch("users/44", 2n ** 62n + 1n)
     .execute();
   const call = lastCall();
-  assert.ok(call.rawBody.includes('"value":4611686018427387905'), call.rawBody);
+  assert.ok(call.rawBody.includes('"value":"4611686018427387905"'), call.rawBody);
 }
 
 async function testListByKindClampsPageSize() {
@@ -367,7 +367,7 @@ async function testIterateByKindUsesClampedSizeForTermination() {
   let page = 0;
   const paged: FetchLike = (url, init) => {
     const count = page === 0 ? 100 : 5;
-    const items = Array.from({ length: count }, (_, index) => ({ value: page * 100 + index }));
+    const items = Array.from({ length: count }, (_, index) => ({ value: String(page * 100 + index) }));
     page += 1;
     nextBody = JSON.stringify({ items, page, size: 100 });
     return stubFetch(url, init);
