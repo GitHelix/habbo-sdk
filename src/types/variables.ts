@@ -74,27 +74,52 @@ export interface RoomVariables {
 }
 
 /**
- * A single entry of a paged variable listing: the stored value plus the entity
- * it belongs to.
+ * Common payload fields shared by all paged variable results regardless of target.
  */
-export interface PagedVariableItem extends WiredVariable {
-  /** Identifier of the entity holding this value, when reported. */
-  id?: number;
-  /** Display name of the entity, for target kinds that have one. */
-  name?: string;
-  /** Unique identifier of the entity, for user targets. */
-  unique_id?: string;
-  /** Any additional fields the server may add for a given target kind. */
-  [key: string]: unknown;
-}
+export interface PagedVariableItemBase {
+  variable: WiredVariable;
+};
+
+/**
+ * Mapping table from each {@link TargetKind} to its target-specific entity payload.
+ *
+ * Each entry provides the property key and shape identifying the entity
+ * (user, pet, bot, or furni) that holds the variable.
+ */
+export interface PagedVariableItemTarget {
+  /** Target details when querying user-held variables. */
+  users: { user: UserProfileTarget };
+  /** Target details when querying pet-held variables. */
+  pets: { pet: ItemProfileTarget };
+  /** Target details when querying bot-held variables. */
+  bots: { bot: ItemProfileTarget };
+  /** Target details when querying standard floor furni variables. */
+  furni: { furni: ItemProfileTarget };
+  /** Target details when querying Builders Club floor furni variables. */
+  "furni-bc": { furni_bc: ItemProfileTarget };
+  /** Target details when querying standard wall item variables. */
+  "wall-items": { wall_item: ItemProfileTarget };
+  /** Target details when querying Builders Club wall item variables. */
+  "wall-items-bc": { wall_item_bc: ItemProfileTarget };
+};
+
+/**
+ * A single entry in a paged variable list.
+ *
+ * Combines the common {@link PagedVariableItemBase} fields with the target-specific
+ * entity definition resolved via {@link PagedVariableItemTarget} for the given {@link TargetKind}.
+ *
+ * @typeParam K - The target kind to resolve entity metadata for. Defaults to all {@link TargetKind} variants.
+ */
+export type PagedVariableItem<K extends TargetKind = TargetKind> = PagedVariableItemBase & PagedVariableItemTarget[K];
 
 /**
  * One page of variable values for a target kind, as returned by
  * {@link VariablesResource.listByKind}.
  */
-export interface PagedVariables {
+export interface PagedVariables<K extends TargetKind = TargetKind> {
   /** The values on this page. */
-  items: PagedVariableItem[];
+  items: PagedVariableItem<K>[];
   /** The one-based page index this result represents; the first page is 1. */
   page: number;
   /** The page size used to produce this result. */

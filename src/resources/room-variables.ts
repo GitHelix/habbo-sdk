@@ -185,21 +185,31 @@ export class RoomVariablesResource extends WiredResource {
 
   /**
    * Lists one page of stored values of a variable across every entity of a
-   * target kind. This is what you want for a leaderboard.
+   * target kind. Ideal for building leaderboards and ranked statistics.
    *
-   * @param scope - `"user"` or `"furni"`.
-   * @param variableName - The configured variable name.
-   * @param targetKind - The entity kind to enumerate.
-   * @param options - Sorting and pagination. See {@link ListByKindOptions}.
-   * @returns One page of values, each with the entity it belongs to.
-   * @throws {@link HabboAuthError} when no `readKey` is configured.   */
-  listByKind<S extends VariableScope>(
-        scope: S,
+   * @typeParam S - The {@link VariableScope} defining whether the variable is
+   *   bound to users or furni.
+   * @typeParam K - The {@link TargetKind} subset accepted for scope `S`, enforced
+   *   by {@link TargetKindFor}.
+   *
+   * @param scope - The variable scope: `"user"` or `"furni"`.
+   * @param variableName - The configured variable name to fetch values for.
+   * @param targetKind - The specific entity category to enumerate, constrained
+   *   by the chosen `scope`.
+   * @param options - Sorting and pagination parameters. See {@link ListByKindOptions}.
+   *
+   * @returns A promise resolving to {@link PagedVariables} containing the requested
+   *   page of {@link PagedVariableItem} entries alongside pagination metadata.
+   *
+   * @throws {@link HabboAuthError} When no `readKey` is configured for the room.
+   */
+  listByKind<S extends VariableScope, K extends TargetKindFor<S>>(
+    scope: S,
     variableName: string,
-    targetKind: TargetKindFor<S>,
+    targetKind: K,
     options: ListByKindOptions = {},
-  ): Promise<PagedVariables> {
-    return this.send<PagedVariables>(
+  ): Promise<PagedVariables<K>> {
+    return this.send<PagedVariables<K>>(
       "GET",
       "read",
       this.roomId,
@@ -219,24 +229,33 @@ export class RoomVariablesResource extends WiredResource {
    * Iterates every stored value of a variable across a target kind, fetching
    * one page at a time.
    *
-   * Use this instead of {@link RoomVariablesResource.listByKind} when you need all
-   * values rather than a single page, and you would rather not manage the page
-   * counter yourself. Iteration stops as soon as the server returns a short or
+   * Use this instead of {@link listByKind} when you need all values rather
+   * than a single page, and you would rather not manage pagination manually.
+   * Iteration automatically stops as soon as the server returns a short or
    * empty page.
    *
-   * @param scope - `"user"` or `"furni"`.
-   * @param variableName - The configured variable name.
-   * @param targetKind - The entity kind to enumerate.
-   * @param options - Sorting, plus the `size` used as the page size and the
-   *   `page` used as the starting page.
-   * @yields Each stored value, in server order.
-   * @throws {@link HabboAuthError} when no `readKey` is configured.   */
-  async *iterateByKind<S extends VariableScope>(
-        scope: S,
+   * @typeParam S - The {@link VariableScope} defining whether the variable is
+   *   bound to users or furni.
+   * @typeParam K - The {@link TargetKind} subset accepted for scope `S`, enforced
+   *   by {@link TargetKindFor}.
+   *
+   * @param scope - The variable scope: `"user"` or `"furni"`.
+   * @param variableName - The configured variable name to fetch values for.
+   * @param targetKind - The specific entity category to enumerate, constrained
+   *   by the chosen `scope`.
+   * @param options - Sorting parameters, plus `size` for the fetch batch size
+   *   and `page` for the initial starting page. See {@link ListByKindOptions}.
+   *
+   * @yields Each {@link PagedVariableItem} for the target kind, in server order.
+   *
+   * @throws {@link HabboAuthError} When no `readKey` is configured for the room.
+   */
+  async *iterateByKind<S extends VariableScope, K extends TargetKindFor<S>>(
+    scope: S,
     variableName: string,
-    targetKind: TargetKindFor<S>,
+    targetKind: K,
     options: ListByKindOptions = {},
-  ): AsyncGenerator<PagedVariables["items"][number], void, undefined> {
+  ): AsyncGenerator<PagedVariables<K>["items"][number], void, undefined> {
     const size = normalizePageSize(options.size) ?? 100;
     let page = normalizePage(options.page) ?? 1;
 
